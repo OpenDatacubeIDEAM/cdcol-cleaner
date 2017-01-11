@@ -28,3 +28,7 @@ class Execution():
 				shutil.rmtree(epath)
 			else:
 				os.remove(epath)
+		self.results_available = False
+		self.results_deleted_at = datetime.datetime.now()
+		dao_exec = DAOExecution(self.conn)
+		dao_exec.set_deleted(self._id, self.results_deleted_at)

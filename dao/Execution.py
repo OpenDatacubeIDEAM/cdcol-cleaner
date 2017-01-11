@@ -23,8 +23,17 @@ class Execution():
 					'results_available, ' +
 					'results_deleted_at ' +
 					'FROM execution_execution ' +
-					'WHERE (now() - finished_at) > interval \'' + days + ' day\';')
+					'WHERE (now() - finished_at) > interval \'' + days + ' day\' AND results_available = TRUE;')
 		rows = cur.fetchall()
 		return rows
 
-
+	def set_deleted(self, _id, results_deleted_at):
+		cur = self.conn.cursor(cursor_factory=DictCursor)
+		query = ('UPDATE execution_execution SET ' +
+				'results_available=FALSE, ' +
+				'results_deleted_at= \'' + str(results_deleted_at) + '\' ' +
+				'WHERE id=' + str(_id) + ';')
+		query = query.replace('\'None\'', 'NULL')
+		cur.execute(query)
+		self.conn.commit()
+		cur.close()
