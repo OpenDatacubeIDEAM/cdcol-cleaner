@@ -22,13 +22,20 @@ class Execution():
 		self.results_deleted_at = dao_execution['results_deleted_at']
 
 	def delete_content(self):
-		for each_file in os.listdir(self.results_path):
-			epath = self.results_path + '/' + each_file
-			if os.path.isdir(epath):
-				shutil.rmtree(epath)
-			else:
-				os.remove(epath)
-		self.results_available = False
-		self.results_deleted_at = datetime.datetime.now()
-		dao_exec = DAOExecution(self.conn)
-		dao_exec.set_deleted(self._id, self.results_deleted_at)
+		try:
+			for each_file in os.listdir(self.results_path):
+				epath = self.results_path + '/' + each_file
+				if os.path.isdir(epath):
+					shutil.rmtree(epath)
+				else:
+					os.remove(epath)
+		except OSError as error:
+			#Solo atrapar el error si es 'No such file or directory"
+			if error.errno != 2:
+				raise error
+			print "No se pudo borrar los resultados de la ejecucion {} debido a que no se creo la carpeta de la misma.".format(self._id)
+		finally:
+			self.results_available = False
+			self.results_deleted_at = datetime.datetime.now()
+			dao_exec = DAOExecution(self.conn)
+			dao_exec.set_deleted(self._id, self.results_deleted_at)
