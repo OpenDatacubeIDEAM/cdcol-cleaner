@@ -170,7 +170,8 @@ def move_dag_script_to_history_folder(dag_id,dag_path):
     dag_name = file_name + '_' + timestamp + '.' + file_ext
     
     dag_history_path = os.path.join(DAGS_HISTORY_PATH,dag_name)
-    os.rename(dag_path, dag_history_path)
+    shutil.move(dag_path, dag_history_path)
+    # os.rename(dag_path, dag_history_path)
 
     logging.info(
         "Dag '%s' was moved to '%s'", 
@@ -204,7 +205,7 @@ def lock_file(func):
     removes the lockfile.
     """
     def wrapper(*args,**kwargs):
-        pid_file_name = 'cdcol_result_cleaner.lock'
+        pid_file_name = 'cdcol_cleaner.lock'
         file_path = os.path.dirname(os.path.abspath(__file__))
         pid_file_path = os.path.join(file_path,pid_file_name)
 
@@ -251,7 +252,7 @@ def delete_old_dags_result_folders(days):
         dag_path = get_dag_from_db(dag_id)[0][1]
         dag_results_path = os.path.join(DAGS_RESULTS_PATH,dag_id)
 
-        if os.path.exists(dag_path):
+        if os.path.exists(dag_path) and '_cleaner_dag' not in dag_id:
             delete_dag_results_folder(dag_id,dag_results_path)
             move_dag_script_to_history_folder(dag_id,dag_path)
             # mark_dag_results_as_deleted_db(dag_id)
