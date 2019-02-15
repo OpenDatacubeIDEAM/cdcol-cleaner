@@ -37,6 +37,12 @@ DB_CONNECTION_DATA = {
     'passwd':'airflow'
 }
 
+"""
+If the execution_date - today() of a dag exceeds
+this number it will be deleted.
+"""
+DAYS_OLD = 3
+
 
 def select_query(query_str):
     """Perform select queries.
@@ -259,4 +265,4 @@ def delete_old_dags_result_folders(days):
 
 if __name__ == '__main__':
     
-    delete_old_dags_result_folders(days=0)
+    delete_old_dags_result_folders(days=DAYS_OLD)

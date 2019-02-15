@@ -23,5 +23,5 @@ dag = DAG(
 task_1 = BashOperator(
     dag=dag,
     task_id='cdcol_cleaner_task',
-    bash_command='python /home/airflow/dags/cdcol_cleaner.py'
+    bash_command='python /web_storage/algorithms/cdcol_cleaner.py'
 )
