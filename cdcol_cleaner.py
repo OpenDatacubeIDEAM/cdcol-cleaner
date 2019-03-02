@@ -23,7 +23,7 @@ The default dags results path.
 DAGS_RESULTS_PATH = '/web_storage/results'
 
 """
-The base folder for Dags execution logs
+The base Dags logs folder
 """
 DAGS_BASE_LOG_FOLDER = ''
 

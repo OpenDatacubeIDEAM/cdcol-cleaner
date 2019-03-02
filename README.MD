@@ -14,6 +14,12 @@ The default dags results path.
 DAGS_RESULTS_PATH = '/web_storage/results'
 
 """
+The base Dags logs folder.
+logs are removed if this variable is defined.
+"""
+DAGS_BASE_LOG_FOLDER = ''
+
+"""
 Path on which old dags scripts will be stored. 
 """
 DAGS_HISTORY_PATH = '/web_storage/dags_history'
