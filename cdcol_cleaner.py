@@ -23,6 +23,11 @@ The default dags results path.
 DAGS_RESULTS_PATH = '/web_storage/results'
 
 """
+The base folder for Dags execution logs
+"""
+DAGS_BASE_LOG_FOLDER = ''
+
+"""
 Path on which old dags scripts will be stored. 
 """
 DAGS_HISTORY_PATH = '/web_storage/dags_history'
@@ -186,6 +191,12 @@ def move_dag_script_to_history_folder(dag_id,dag_path):
 
 
 def delete_dag_results_folder(dag_id,dag_results_path):
+    """Remove the given dag results folder
+
+    Args:
+        dag_id (str): dag id.
+        dag_results_path (str): path to the dag result folder.
+    """
     logging.info(
         "Dag '%s' located at '%s' will be deleted.", 
         dag_id, dag_results_path
@@ -202,6 +213,37 @@ def delete_dag_results_folder(dag_id,dag_results_path):
         logging.info(
             "Results of dag_id '%s' at '%s' were deleted.", dag_id, dag_results_path
         )
+
+def delete_dag_logs_folder(dag_id):
+    """Remove all logs for a given dag 
+
+    Remove the log folder of the dag with the given dag_id
+    if 'DAGS_BASE_LOG_FOLDER' is defined
+
+    Args:
+        dag_id (str): dag id.
+    """
+
+    if DAGS_BASE_LOG_FOLDER:
+
+        dag_logs_path = os.path.join(DAGS_BASE_LOG_FOLDER,dag_id)
+        
+        logging.info(
+            "Dag '%s' logs located at '%s' will be deleted.", 
+            dag_id, dag_logs_path
+        )
+
+        try:
+            shutil.rmtree(dag_logs_path)
+        except OSError as e:
+            logging.error(
+                "Logs of dag_id '%s'  can not be located at '%s' does not exists.", 
+                dag_id, dag_logs_path
+            )
+        else:
+            logging.info(
+                "Logs of dag_id '%s' at '%s' were deleted.", dag_id, dag_logs_path
+            )
             
 
 def lock_file(func):
@@ -261,6 +303,7 @@ def delete_old_dags_result_folders(days):
         if os.path.exists(dag_path) and '_cleaner_dag' not in dag_id:
             delete_dag_results_folder(dag_id,dag_results_path)
             move_dag_script_to_history_folder(dag_id,dag_path)
+            delete_dag_logs_folder(dag_id)
             # mark_dag_results_as_deleted_db(dag_id)
 
 if __name__ == '__main__':
