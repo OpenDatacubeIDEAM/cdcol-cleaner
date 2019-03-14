@@ -14,15 +14,23 @@ The default dags results path.
 DAGS_RESULTS_PATH = '/web_storage/results'
 
 """
-The base Dags logs folder.
-logs are removed if this variable is defined.
+The base Dags logs folder
+/web_storage/logs/{{dag_id}}
 """
-DAGS_BASE_LOG_FOLDER = ''
+DAGS_BASE_LOG_FOLDER = '/home/airflow/logs'
 
 """
 Path on which old dags scripts will be stored. 
 """
 DAGS_HISTORY_PATH = '/web_storage/dags_history'
+
+"""
+This dags will be ignored by the cleaner
+"""
+DAGS_IGNORE = [
+    # This is the cleaner dag (mandatory)
+    'cdcol_cleaner_dag.py'
+]
 
 """
 Database connection data.

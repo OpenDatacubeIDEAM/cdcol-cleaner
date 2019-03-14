@@ -24,13 +24,22 @@ DAGS_RESULTS_PATH = '/web_storage/results'
 
 """
 The base Dags logs folder
+/web_storage/logs/{{dag_id}}
 """
-DAGS_BASE_LOG_FOLDER = ''
+DAGS_BASE_LOG_FOLDER = '/home/airflow/logs'
 
 """
 Path on which old dags scripts will be stored. 
 """
 DAGS_HISTORY_PATH = '/web_storage/dags_history'
+
+"""
+This dags will be ignored by the cleaner
+"""
+DAGS_IGNORE = [
+    # This is the cleaner dag (mandatory)
+    'cdcol_cleaner_dag.py'
+]
 
 """
 Database connection data.
@@ -46,7 +55,7 @@ DB_CONNECTION_DATA = {
 If the execution_date - today() of a dag exceeds
 this number it will be deleted.
 """
-DAYS_OLD = 3
+DAYS_OLD = 0
 
 
 def select_query(query_str):
@@ -266,11 +275,16 @@ def lock_file(func):
             with open(pid_file_path,'w') as pid_file:
                 pid_file.write(str(os.getpid()))
 
-            # Running the decorated function
-            func(*args,**kwargs)
 
-            # Delete lockfile
-            os.remove(pid_file_path)
+            try:
+                # Running the decorated function
+                func(*args,**kwargs)
+            except Exception as e:
+                logging.error("Something wrong happed !: %s",e)
+            finally:
+                # Finally ensure the lock file is deleted
+                # Delete lockfile
+                os.remove(pid_file_path)
 
             logging.info("End cdcol_result_cleaner ...")
 
@@ -297,14 +311,26 @@ def delete_old_dags_result_folders(days):
 
     for row in rows:
         dag_id = row[0]
-        dag_path = get_dag_from_db(dag_id)[0][1]
-        dag_results_path = os.path.join(DAGS_RESULTS_PATH,dag_id)
+        dag_file_path = get_dag_from_db(dag_id)[0][1]
+        dag_file_name = os.path.basename(dag_file_path)
+        dag_results_path = os.path.join(DAGS_RESULTS_PATH,dag_file_path)
 
-        if os.path.exists(dag_path) and '_cleaner_dag' not in dag_id:
+        # If the dag file exists and it is not an ignored dag. 
+        # It will be deleted
+
+        dag_exists = os.path.exists(dag_file_path)
+        is_ignored = dag_file_name in DAGS_IGNORE
+
+        logging.info(
+            "Inspect %s: dag exists (%s) and is in ignore dags (%s)"
+            ,dag_file_name,dag_exists,is_ignored
+        ) 
+        if  dag_exists and not is_ignored:
             delete_dag_results_folder(dag_id,dag_results_path)
-            move_dag_script_to_history_folder(dag_id,dag_path)
+            move_dag_script_to_history_folder(dag_id,dag_file_path)
             delete_dag_logs_folder(dag_id)
             # mark_dag_results_as_deleted_db(dag_id)
+            delete_dag_logs_folder(dag_id)
 
 if __name__ == '__main__':
     
