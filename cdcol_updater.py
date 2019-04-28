@@ -1,13 +1,22 @@
 # -*- coding: utf-8 -*-
 
 """
-cdcol_updater 
+    cdcol_updater 
 
-This script update the state of executions which dag_id 
-is in state 'success' or 'fail'.
+    Update the state of 'success' and 'failed' executions 
+    in the execution_execution table created by the web component.
 
-If the dag_id is in state 'running' the state of the 
-execution is not updated.
+    This script will takes the execution state of a dag and will 
+    put this state in the execution_execution table of the Web
+    component.
+
+    This script perfomr the following activities:
+    
+    1. Get the state of dag executions form Airflow database.
+    2. If the dag is in sucess or fail state copy this state in 
+        execution_execution table of the Web component.
+    3. Copy the logs output into the execution_execution table 
+        in the field 'trace_error'.
 """
 
 import psycopg2
