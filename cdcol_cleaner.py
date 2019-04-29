@@ -1,5 +1,20 @@
 # -*- coding: utf-8 -*-
 
+"""
+    cdcol_cleanner
+
+    The cdcol_cleaner remove dags that are in success or fail state
+    and have been executed 'DAYS_OLD' days ago.
+
+    This script perform the following activities.
+
+    1. Delete the result folder of a dag.
+    2. Move the <dag_file_name>.py file to 'DAGS_HISTORY_PATH'.
+    3. Delete dag logs from 'DAGS_BASE_LOG_FOLDER',
+    4. Update execution_execution (WEB) table to mark the results as deleted.
+    5. Delete dags from the airflow database.
+"""
+
 import os
 import shutil
 import datetime
@@ -12,9 +27,6 @@ logging.basicConfig(
     format='%(levelname)s : %(asctime)s : %(message)s',
     level=logging.DEBUG
 )
-
-# To print loggin information in the console
-# logging.getLogger().addHandler(logging.StreamHandler())
 
 
 """
@@ -44,7 +56,14 @@ DAGS_IGNORE = [
 """
 Database connection data.
 """
-DB_CONNECTION_DATA = {
+AIRFLOW_DB_CONN_DATA = {
+    'host':'172.18.0.2',
+    'dbname':'airflow',
+    'user':'airflow',
+    'passwd':'airflow'
+}
+
+WEB_DB_CONN_DATA = {
     'host':'postgres',
     'dbname':'airflow',
     'user':'airflow',
@@ -53,12 +72,13 @@ DB_CONNECTION_DATA = {
 
 """
 If the execution_date - today() of a dag exceeds
-this number it will be deleted.
+this number. And they are in success or failed state,
+they will be deleted.
 """
 DAYS_OLD = 0
 
 
-def select_query(query_str):
+def select_query(query_str,conn_data):
     """Perform select queries.
     
     Args:
@@ -71,7 +91,7 @@ def select_query(query_str):
         "password='%(passwd)s'"
     )
 
-    connection_str = connection_format % DB_CONNECTION_DATA
+    connection_str = connection_format % conn_data
 
     # Opening connecting
     connection = psycopg2.connect(connection_str)
@@ -87,13 +107,38 @@ def select_query(query_str):
     return rows
 
 
-def update_query():
+def update_query(query_str,conn_data):
     """Perform update queries.
     
     Args:
         query_str (str): SQL query to be performed.
+        conn_data (dict): a dictionary with database conection 
+            data. 
     """
-    pass
+    connection_format = (
+        "dbname='%(dbname)s' " 
+        "user='%(user)s' "
+        "host='%(host)s' "
+        "password='%(passwd)s'"
+    )
+
+    connection_str = connection_format % conn_data
+
+    # Opening connecting
+    connection = psycopg2.connect(connection_str)
+    cursor = connection.cursor()
+
+    # Performing query
+    cursor.execute(query_str)
+    connection.commit()
+
+    # updated row count
+    row_count = cursor.rowcount
+   
+    # Close connection
+    connection.close()
+
+    return row_count
 
 
 def get_dag_from_db(dag_id):
@@ -111,14 +156,15 @@ def get_dag_from_db(dag_id):
     )
 
     query_str = query_format % dag_id
-    rows = select_query(query_str)
+    rows = select_query(query_str,AIRFLOW_DB_CONN_DATA)
     return rows
 
 
 def get_old_dags_runs_from_db(days):
     """
     Return the dag ids whose execution date exceeds 
-    a certain number of days.
+    a certain number of days. And they are in success 
+    or failed state.
 
     Args:
         days (int): If the execution_date of the dag exceeds 
@@ -140,40 +186,46 @@ def get_old_dags_runs_from_db(days):
     )
 
     query_str = query_format % days
-    rows = select_query(query_str)
+    rows = select_query(query_str,AIRFLOW_DB_CONN_DATA)
     return rows
 
 
 def mark_dag_results_as_deleted_db(dag_id):
     """ Mark result forder as deleted in the db.
 
-    Mark a result as deleted in 'execution_execution' table 
-    created by the web componnent. This table keeps track of the results 
-    generate by airflow diring an execution.
+    Mark a result as deleted in 'execution_execution' for 
+    the execution coresponding with the given dag_id.
 
     Args:
-        kwargs (dict): Must contain the dag_id to be 
-            updated.
+        dag_id (str): Name of th dags which results were
+            deleted. 
+
+    Return: the number of rows updated in the execution_execution
+        table. It must be one,because for each execution only 
+        one dag_id is allowed.
     """
 
     # The date on which the dag was deleted
-    kwargs['results_deleted_at'] = datetime.datetime.now()
+    kwargs = {
+        'dag_id': dag_id,
+        'results_deleted_at': datetime.datetime.now(),
+    }
 
     # We mark in the db a result as deleted
     query_format = (
         'UPDATE execution_execution SET '
         'results_available=FALSE, '
         'results_deleted_at= \'%(results_deleted_at)s \' '
-        'WHERE id=%(dag_id)s;'
+        'WHERE dag_id=\'%(dag_id)s\';'
     )
 
-    query_str = query_format % days
-    rows = perform_update_query(query_str)
-    return rows
+    query_str = query_format % kwargs
+    row_count = update_query(query_str,WEB_DB_CONN_DATA)
+    return row_count
 
 
 def move_dag_script_to_history_folder(dag_id,dag_path):
-    """Move a dag to a history directory
+    """Move a dag to a 'DAGS_HISTORY_PATH'
 
     Args:
         dag_id (str): dag id.
@@ -253,7 +305,46 @@ def delete_dag_logs_folder(dag_id):
             logging.info(
                 "Logs of dag_id '%s' at '%s' were deleted.", dag_id, dag_logs_path
             )
-            
+
+
+def delete_dag_from_ariflow_db(dag_id):
+    """ Delete a dag from all airflow database tables
+
+    Args:
+        dag_id (str): The dag that will be deleted from
+            airflow tables.        
+    """
+    db_tables = [
+        'dag_run',
+        'dag_stats',
+        'job',
+        'log',
+        'sla_miss',
+        'task_fail',
+        'task_instance',
+        'xcom',
+        'dag'
+    ]
+
+    for db_table in db_tables:
+        kwargs = {
+            'db_table': db_table,
+            'dag_id':dag_id    
+        }
+
+        query_format = (
+            'DELETE FROM %(db_table)s '
+            'WHERE dag_id=\'%(dag_id)s\';'
+        )
+
+        query_str = query_format % kwargs
+        row_count = update_query(query_str,AIRFLOW_DB_CONN_DATA)
+
+        logging.info(
+            'From table %s, dag %s, %s recods deleted.',
+            db_table,dag_id,row_count
+        )
+
 
 def lock_file(func):
     """
@@ -329,8 +420,8 @@ def delete_old_dags_result_folders(days):
             delete_dag_results_folder(dag_id,dag_results_path)
             move_dag_script_to_history_folder(dag_id,dag_file_path)
             delete_dag_logs_folder(dag_id)
-            # mark_dag_results_as_deleted_db(dag_id)
-            delete_dag_logs_folder(dag_id)
+            mark_dag_results_as_deleted_db(dag_id)
+            delete_dag_from_ariflow_db(dag_id)
 
 if __name__ == '__main__':
     

@@ -15,12 +15,11 @@
     1. Get the state of dag executions form Airflow database.
     2. If the dag is in sucess or fail state copy this state in 
         execution_execution table of the Web component.
-    3. Copy the logs output into the execution_execution table 
-        in the field 'trace_error'.
 """
 
 import psycopg2
 import logging
+import os
 
 
 logging.basicConfig(
@@ -146,7 +145,8 @@ def get_dag_run(dag_id):
         'dag_id, '
         'state, '
         'start_date, '
-        'end_date '
+        'end_date, '
+        'execution_date '
         'FROM dag_run '
         'WHERE dag_id = \'%s\' ;'
     )
@@ -163,6 +163,7 @@ def update_execution(**fields):
     Updates the state, started_at, finished_at and 
     results_available fields of a given dag_id
     """
+
     query_format = (
         'UPDATE execution_execution SET '
         'state=\'%(state)s\', '
@@ -196,7 +197,7 @@ def update_executions():
             bool(dag_run)
         )
         if dag_run:
-            dag_id, state, start_date, end_date = dag_run
+            dag_id, state, start_date, end_date, execution_date = dag_run
             logging.info(
                 'Dag %s has finished (%s), state (%s)',dag_id,bool(end_date),state
             )
@@ -209,7 +210,8 @@ def update_executions():
                     dag_id=dag_id,
                     state=state,
                     start_date=start_date,
-                    end_date=end_date
+                    end_date=end_date,
+                    execution_date=execution_date,
                 )
                 logging.info('Dag %s updated (%s)',dag_id,bool(updated))
                 
