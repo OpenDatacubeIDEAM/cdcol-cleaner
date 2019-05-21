@@ -38,7 +38,7 @@ DAGS_RESULTS_PATH = '/web_storage/results'
 The base Dags logs folder
 /web_storage/logs/{{dag_id}}
 """
-DAGS_BASE_LOG_FOLDER = '/home/airflow/logs'
+DAGS_BASE_LOG_FOLDER = '/web_storage/logs'
 
 """
 Path on which old dags scripts will be stored. 
@@ -57,17 +57,17 @@ DAGS_IGNORE = [
 Database connection data.
 """
 AIRFLOW_DB_CONN_DATA = {
-    'host':'172.18.0.2',
+    'host':'172.24.99.218',
     'dbname':'airflow',
     'user':'airflow',
-    'passwd':'airflow'
+    'passwd':'cubocubo'
 }
 
 WEB_DB_CONN_DATA = {
-    'host':'postgres',
-    'dbname':'airflow',
-    'user':'airflow',
-    'passwd':'airflow'
+    'host':'172.24.99.218',
+    'dbname':'ideam',
+    'user':'portal_web',
+    'passwd':'CDCol_web_2016'
 }
 
 """
