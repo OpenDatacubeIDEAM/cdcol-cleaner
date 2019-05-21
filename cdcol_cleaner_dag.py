@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime.today() - timedelta(days=1),
+    'start_date': datetime.today(),
     'retry_delay': timedelta(minutes=5),
     # Run once a day at midnight
     'schedule_interval': '@daily',
