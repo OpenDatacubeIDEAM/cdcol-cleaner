@@ -5,23 +5,30 @@ from airflow.operators import BashOperator
 from datetime import datetime, timedelta
 
 
-every_minute = '* * * * *'
+every_minute = '*/1 * * * *'
 every_day = '@daily'
+
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime.today(),
-    'retry_delay': timedelta(minutes=5),
+    'start_date': '2019-05-20T23:59'
+    #'start_date': datetime.today(),
+    #'retry_delay': timedelta(minutes=5),
     # Run once a day at midnight
-    'schedule_interval': every_minute,
+    #'schedule_interval': every_minute,
+    #'catchup': False
 }
 
 
 dag = DAG(
     dag_id='cdcol_updater_and_cleaner_dag',
+    schedule_interval=every_minute,
+    max_active_runs=1,
+    catchup=False,
     default_args=default_args
 )
+
 
 task_1 = BashOperator(
     dag=dag,
