@@ -16,8 +16,8 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id='cdcol_cleaner_dag',
-    schedule_interval=every_day,
+    dag_id='cdcol_updater_dag',
+    schedule_interval=every_minute,
     max_active_runs=1,
     catchup=False,
     default_args=default_args
@@ -25,6 +25,7 @@ dag = DAG(
 
 task = BashOperator(
     dag=dag,
-    task_id='cdcol_cleaner_task',
-    bash_command='python /web_storage/algorithms/cdcol_cleaner/cdcol_cleaner.py'
+    task_id='cdcol_updater_task',
+    bash_command='python /web_storage/algorithms/cdcol_updater/cdcol_updater.py'
 )
+

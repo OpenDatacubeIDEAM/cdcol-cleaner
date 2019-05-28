@@ -50,7 +50,8 @@ This dags will be ignored by the cleaner
 """
 DAGS_IGNORE = [
     # This is the cleaner dag (mandatory)
-    'cdcol_cleaner_dag.py'
+    'cdcol_cleaner_dag.py',
+    'cdcol_updater_dag.py'
 ]
 
 """
