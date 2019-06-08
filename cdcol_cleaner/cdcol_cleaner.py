@@ -29,6 +29,12 @@ logging.basicConfig(
 )
 
 
+
+"""
+The default dags results path.
+"""
+DAGS_BASE_PATH = '/web_storage/dags'
+
 """
 The default dags results path.
 """
@@ -58,15 +64,15 @@ DAGS_IGNORE = [
 Database connection data.
 """
 AIRFLOW_DB_CONN_DATA = {
-    'host':'172.24.99.218',
+    'host':'192.168.106.21',
     'dbname':'airflow',
     'user':'airflow',
     'passwd':'cubocubo'
 }
 
 WEB_DB_CONN_DATA = {
-    'host':'172.24.99.218',
-    'dbname':'ideam',
+    'host':'192.168.106.21',
+    'dbname':'ideam_1',
     'user':'portal_web',
     'passwd':'CDCol_web_2016'
 }
@@ -76,7 +82,7 @@ If the execution_date - today() of a dag exceeds
 this number. And they are in success or failed state,
 they will be deleted.
 """
-DAYS_OLD = 0
+DAYS_OLD = 3
 
 
 def select_query(query_str,conn_data):
@@ -182,6 +188,8 @@ def get_old_dags_runs_from_db(days):
         'state '
         'FROM dag_run '
         'WHERE (now() - execution_date) > interval \'%s\' day ' 
+        'AND dag_id != \'cdcol_cleaner_dag\' '
+        'AND dag_id != \'cdcol_updater_dag\' '
         'AND state = \'success\' '
         'OR state = \'failed\' ;'
     )
@@ -315,36 +323,27 @@ def delete_dag_from_ariflow_db(dag_id):
         dag_id (str): The dag that will be deleted from
             airflow tables.        
     """
-    db_tables = [
-        'dag_run',
-        'dag_stats',
-        'job',
-        'log',
-        'sla_miss',
-        'task_fail',
-        'task_instance',
-        'xcom',
-        'dag'
-    ]
 
-    for db_table in db_tables:
-        kwargs = {
-            'db_table': db_table,
-            'dag_id':dag_id    
-        }
+    query_format = (
+        'create temporary table t_dags_to_remove as select dag_id from dag where dag_id like \'%(dag_id)s\'; '
+        'delete from xcom where dag_id in (select * from t_dags_to_remove); '
+        'delete from task_instance where dag_id in (select * from t_dags_to_remove); '
+        'delete from task_fail where dag_id in (select * from t_dags_to_remove); '
+        'delete from sla_miss where dag_id in (select * from t_dags_to_remove); '
+        'delete from log where dag_id in (select * from t_dags_to_remove); '
+        'delete from job where dag_id in (select * from t_dags_to_remove); '
+        'delete from dag_run where dag_id in (select * from t_dags_to_remove); '
+        'delete from dag_stats where dag_id in (select * from t_dags_to_remove); '
+        'delete from dag where dag_id in (select * from t_dags_to_remove); '
+    )
 
-        query_format = (
-            'DELETE FROM %(db_table)s '
-            'WHERE dag_id=\'%(dag_id)s\';'
-        )
+    query_str = query_format % dag_id
+    row_count = update_query(query_str,AIRFLOW_DB_CONN_DATA)
 
-        query_str = query_format % kwargs
-        row_count = update_query(query_str,AIRFLOW_DB_CONN_DATA)
-
-        logging.info(
-            'From table %s, dag %s, %s recods deleted.',
-            db_table,dag_id,row_count
-        )
+    logging.info(
+        'From dag_id %s, %s records were deleted.',
+        dag_id,row_count
+    )
 
 
 def lock_file(func):
@@ -403,9 +402,14 @@ def delete_old_dags_result_folders(days):
 
     for row in rows:
         dag_id = row[0]
+
+        # The dag file path is just used to get the dag_file_name 
+        # NOTE: Arflow is not returning the file path correctly.
         dag_file_path = get_dag_from_db(dag_id)[0][1]
+
         dag_file_name = os.path.basename(dag_file_path)
-        dag_results_path = os.path.join(DAGS_RESULTS_PATH,dag_file_path)
+        dag_results_folder = os.path.join(DAGS_RESULTS_PATH,dag_id)
+        dag_file_path = os.path.join(DAGS_BASE_PATH,dag_file_name)
 
         # If the dag file exists and it is not an ignored dag. 
         # It will be deleted
@@ -413,12 +417,23 @@ def delete_old_dags_result_folders(days):
         dag_exists = os.path.exists(dag_file_path)
         is_ignored = dag_file_name in DAGS_IGNORE
 
+
+        logging.info(
+            "Inspect %s: dag file path (%s)"
+            ,dag_file_name,dag_file_path
+        )
+
+        logging.info(
+            "Inspect %s: dag results path (%s)"
+            ,dag_file_name,dag_results_folder
+        )
+
         logging.info(
             "Inspect %s: dag exists (%s) and is in ignore dags (%s)"
             ,dag_file_name,dag_exists,is_ignored
         ) 
         if  dag_exists and not is_ignored:
-            delete_dag_results_folder(dag_id,dag_results_path)
+            delete_dag_results_folder(dag_id,dag_results_folder)
             move_dag_script_to_history_folder(dag_id,dag_file_path)
             delete_dag_logs_folder(dag_id)
             mark_dag_results_as_deleted_db(dag_id)
