@@ -325,7 +325,7 @@ def delete_dag_from_ariflow_db(dag_id):
     """
 
     query_format = (
-        'create temporary table t_dags_to_remove as select dag_id from dag where dag_id like \'%(dag_id)s\'; '
+        'create temporary table t_dags_to_remove as select dag_id from dag where dag_id like \'%s\'; '
         'delete from xcom where dag_id in (select * from t_dags_to_remove); '
         'delete from task_instance where dag_id in (select * from t_dags_to_remove); '
         'delete from task_fail where dag_id in (select * from t_dags_to_remove); '
