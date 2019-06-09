@@ -439,7 +439,7 @@ def delete_old_dags_result_folders(days):
             ,dag_id,dag_exists,is_ignored
         )
 
-        if  dag_exists and not is_ignored:
+        if not is_ignored:
             delete_dag_results_folder(dag_id,dag_results_folder)
             move_dag_script_to_history_folder(dag_id,dag_file_path)
             delete_dag_logs_folder(dag_id)
