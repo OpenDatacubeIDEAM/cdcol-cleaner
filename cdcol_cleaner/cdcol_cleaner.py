@@ -333,6 +333,7 @@ def delete_dag_from_ariflow_db(dag_id):
     query_format = (
         'create temporary table t_dags_to_remove as select dag_id from dag where dag_id like \'%s\'; '
         'delete from xcom where dag_id in (select * from t_dags_to_remove); '
+        'delete from task_reschedule where dag_id in (select * from t_dags_to_remove); '
         'delete from task_instance where dag_id in (select * from t_dags_to_remove); '
         'delete from task_fail where dag_id in (select * from t_dags_to_remove); '
         'delete from sla_miss where dag_id in (select * from t_dags_to_remove); '
@@ -378,6 +379,7 @@ def lock_file(func):
                 func(*args,**kwargs)
             except Exception as e:
                 logging.error("Something wrong happed !: %s",e)
+                raise e
             finally:
                 # Finally ensure the lock file is deleted
                 # Delete lockfile
@@ -409,11 +411,19 @@ def delete_old_dags_result_folders(days):
     for row in rows:
         dag_id = row[0]
 
+
+        logging.info('Row %s',row)
         # The dag file path is just used to get the dag_file_name 
         # NOTE: Arflow is not returning the file path correctly.
-        dag_file_path = get_dag_from_db(dag_id)[0][1]
+        dag_rows = get_dag_from_db(dag_id)
 
-        dag_file_name = os.path.basename(dag_file_path)
+        if dag_rows:
+            dag_file_path = get_dag_from_db(dag_id)[0][1]
+            dag_file_name = os.path.basename(dag_file_path)
+        else:
+            dag_file_name = '{}.py'.format(dag_id)
+
+        #dag_file_name = os.path.basename(dag_file_path)
         dag_results_folder = os.path.join(DAGS_RESULTS_PATH,dag_id)
         dag_file_path = os.path.join(DAGS_BASE_PATH,dag_file_name)
 
