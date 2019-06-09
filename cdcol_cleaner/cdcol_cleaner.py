@@ -251,13 +251,19 @@ def move_dag_script_to_history_folder(dag_id,dag_path):
     dag_name = file_name + '_' + timestamp + '.' + file_ext
     
     dag_history_path = os.path.join(DAGS_HISTORY_PATH,dag_name)
-    shutil.move(dag_path, dag_history_path)
-    # os.rename(dag_path, dag_history_path)
 
-    logging.info(
-        "Dag '%s' was moved to '%s'", 
-        dag_path, dag_history_path
-    )
+    try:
+        shutil.move(dag_path, dag_history_path)
+    except OSError as e:
+        logging.error(
+            "Dag '%s' can not be moved from '%s' to '%s'", 
+            dag_id, dag_path, dag_history_path
+        )
+    else:
+        logging.info(
+            "Dag '%s' was moved from '%s' to '%s'", 
+            dag_id, dag_path, dag_history_path
+        )
 
 
 def delete_dag_results_folder(dag_id,dag_results_path):
@@ -268,7 +274,7 @@ def delete_dag_results_folder(dag_id,dag_results_path):
         dag_results_path (str): path to the dag result folder.
     """
     logging.info(
-        "Dag '%s' located at '%s' will be deleted.", 
+        "Dag '%s' results located at '%s' will be deleted.", 
         dag_id, dag_results_path
     )
 
@@ -420,18 +426,19 @@ def delete_old_dags_result_folders(days):
 
         logging.info(
             "Inspect %s: dag file path (%s)"
-            ,dag_file_name,dag_file_path
+            ,dag_id,dag_file_path
         )
 
         logging.info(
             "Inspect %s: dag results path (%s)"
-            ,dag_file_name,dag_results_folder
+            ,dag_id,dag_results_folder
         )
 
         logging.info(
             "Inspect %s: dag exists (%s) and is in ignore dags (%s)"
-            ,dag_file_name,dag_exists,is_ignored
-        ) 
+            ,dag_id,dag_exists,is_ignored
+        )
+
         if  dag_exists and not is_ignored:
             delete_dag_results_folder(dag_id,dag_results_folder)
             move_dag_script_to_history_folder(dag_id,dag_file_path)
