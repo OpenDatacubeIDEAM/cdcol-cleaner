@@ -190,8 +190,7 @@ def get_old_dags_runs_from_db(days):
         'WHERE (now() - execution_date) > interval \'%s\' day ' 
         'AND dag_id != \'cdcol_cleaner_dag\' '
         'AND dag_id != \'cdcol_updater_dag\' '
-        'AND state = \'success\' '
-        'OR state = \'failed\' ;'
+        'AND state != \'running\' ;'
     )
 
     query_str = query_format % days
