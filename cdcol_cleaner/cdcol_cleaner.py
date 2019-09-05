@@ -64,15 +64,15 @@ DAGS_IGNORE = [
 Database connection data.
 """
 AIRFLOW_DB_CONN_DATA = {
-    'host':'192.168.106.21',
+    'host':'db',
     'dbname':'airflow',
     'user':'airflow',
     'passwd':'cubocubo'
 }
 
 WEB_DB_CONN_DATA = {
-    'host':'192.168.106.21',
-    'dbname':'ideam_1',
+    'host':'db',
+    'dbname':'ideam',
     'user':'portal_web',
     'passwd':'CDCol_web_2016'
 }
