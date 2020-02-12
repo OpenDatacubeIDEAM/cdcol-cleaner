@@ -64,15 +64,15 @@ DAGS_IGNORE = [
 Database connection data.
 """
 AIRFLOW_DB_CONN_DATA = {
-    'host':'db',
+    'host':'192.168.106.21',
     'dbname':'airflow',
     'user':'airflow',
     'passwd':'cubocubo'
 }
 
 WEB_DB_CONN_DATA = {
-    'host':'db',
-    'dbname':'ideam',
+    'host':'192.168.106.21',
+    'dbname':'ideam_1',
     'user':'portal_web',
     'passwd':'CDCol_web_2016'
 }
@@ -82,7 +82,7 @@ If the execution_date - today() of a dag exceeds
 this number. And they are in success or failed state,
 they will be deleted.
 """
-DAYS_OLD = 3
+DAYS_OLD = 2
 
 
 def select_query(query_str,conn_data):
@@ -244,7 +244,9 @@ def move_dag_script_to_history_folder(dag_id,dag_path):
     if not os.path.exists(DAGS_HISTORY_PATH):
         os.makedirs(DAGS_HISTORY_PATH)
 
-    file_name, file_ext = os.path.basename(dag_path).split('.')
+    #file_name, file_ext = os.path.basename(dag_path).split('.')
+    file_name = os.path.basename(dag_path)[:-3]
+    file_ext = os.path.basename(dag_path)[-2:]
     
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     dag_name = file_name + '_' + timestamp + '.' + file_ext
